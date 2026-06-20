@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Presentr — Modern Presentation Tool</title>
+  <meta name="description" content="A beautiful, modern HTML presentation tool with speaker notes and presenter view.">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #12121a;
+      --bg-tertiary: #1a1a28;
+      --bg-card: #1e1e2e;
+      --surface: #252536;
+      --border: #2a2a3d;
+      --border-glow: #6c63ff33;
+      --text-primary: #e8e6f0;
+      --text-secondary: #9994b8;
+      --text-muted: #6b6580;
+      --accent: #6c63ff;
+      --accent-hover: #7f78ff;
+      --accent-glow: #6c63ff40;
+      --success: #4ade80;
+      --warning: #fbbf24;
+      --danger: #f87171;
+      --gradient-1: linear-gradient(135deg, #6c63ff 0%, #a855f7 50%, #ec4899 100%);
+      --gradient-2: linear-gradient(135deg, #06b6d4 0%, #6c63ff 100%);
+      --gradient-3: linear-gradient(135deg, #f59e0b 0%, #ef4444 100%);
+      --shadow-lg: 0 20px 60px rgba(0,0,0,0.5);
+      --shadow-glow: 0 0 40px var(--accent-glow);
+      --radius: 16px;
+      --radius-sm: 10px;
+      --transition: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    html, body {
+      height: 100%;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ========== TOOLBAR ========== */
+    #toolbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      height: 56px;
+      background: var(--bg-secondary);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      z-index: 1000;
+      backdrop-filter: blur(20px);
+      transition: transform var(--transition);
+    }
+    #toolbar.hidden { transform: translateY(-100%); }
+
+    .toolbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 18px;
+      letter-spacing: -0.5px;
+    }
+    .toolbar-brand .logo {
+      width: 32px; height: 32px;
+      background: var(--gradient-1);
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+      box-shadow: 0 4px 12px var(--accent-glow);
+    }
+
+    .toolbar-center {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .toolbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--bg-tertiary);
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all var(--transition);
+      white-space: nowrap;
+    }
+    .btn:hover {
+      background: var(--surface);
+      border-color: var(--accent);
+      box-shadow: 0 0 16px var(--accent-glow);
+    }
+    .btn.primary {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: #fff;
+    }
+    .btn.primary:hover {
+      background: var(--accent-hover);
+      box-shadow: var(--shadow-glow);
+    }
+    .btn .icon { font-size: 16px; line-height: 1; }
+
+    .slide-counter {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      min-width: 80px;
+      text-align: center;
+    }
+    .slide-counter .current { color: var(--text-primary); font-size: 18px; }
+
+    /* ========== PROGRESS BAR ========== */
+    #progress-bar {
+      position: fixed;
+      top: 56px; left: 0; right: 0;
+      height: 3px;
+      background: var(--bg-tertiary);
+      z-index: 999;
+      transition: top var(--transition);
+    }
+    #progress-bar.hidden { top: 0; }
+    #progress-fill {
+      height: 100%;
+      background: var(--gradient-1);
+      transition: width 0.4s ease;
+      border-radius: 0 3px 3px 0;
+      box-shadow: 0 0 10px var(--accent-glow);
+    }
+
+    /* ========== MAIN PRESENTATION VIEW ========== */
+    #presentation-view {
+      position: fixed;
+      top: 59px; left: 0; right: 0; bottom: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-primary);
+      transition: all var(--transition);
+    }
+    #presentation-view.fullscreen {
+      top: 0;
+    }
+
+    .slide-container {
+      width: 100%;
+      max-width: 1200px;
+      aspect-ratio: 16 / 9;
+      max-height: calc(100vh - 100px);
+      position: relative;
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+      transition: all var(--transition);
+    }
+    .fullscreen .slide-container {
+      max-width: 100vw;
+      max-height: 100vh;
+      border-radius: 0;
+    }
+
+    .slide {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 60px 80px;
+      opacity: 0;
+      transform: translateX(60px);
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      pointer-events: none;
+    }
+    .slide.active {
+      opacity: 1;
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+    .slide.exit-left {
+      opacity: 0;
+      transform: translateX(-60px);
+    }
+
+    /* Slide Themes */
+    .slide-theme-hero {
+      background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
+      text-align: center;
+    }
+    .slide-theme-gradient1 {
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    }
+    .slide-theme-gradient2 {
+      background: linear-gradient(135deg, #0f0f1a 0%, #1a0a2e 50%, #2d1b69 100%);
+    }
+    .slide-theme-gradient3 {
+      background: linear-gradient(135deg, #0a192f 0%, #112240 50%, #1d3557 100%);
+    }
+    .slide-theme-dark {
+      background: linear-gradient(180deg, #111118 0%, #1a1a28 100%);
+    }
+    .slide-theme-accent {
+      background: linear-gradient(135deg, #312e81 0%, #4c1d95 50%, #581c87 100%);
+    }
+    .slide-theme-end {
+      background: linear-gradient(135deg, #0c0c1d 0%, #1e1b4b 50%, #312e81 100%);
+      text-align: center;
+    }
+
+    /* Slide Typography */
+    .slide h1 {
+      font-size: clamp(32px, 5vw, 64px);
+      font-weight: 800;
+      letter-spacing: -2px;
+      line-height: 1.1;
+      margin-bottom: 20px;
+      background: var(--gradient-1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .slide h2 {
+      font-size: clamp(24px, 3.5vw, 44px);
+      font-weight: 700;
+      letter-spacing: -1.5px;
+      line-height: 1.2;
+      margin-bottom: 24px;
+      color: var(--text-primary);
+    }
+    .slide h3 {
+      font-size: clamp(16px, 2vw, 24px);
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin-bottom: 16px;
+    }
+    .slide p, .slide li {
+      font-size: clamp(14px, 1.6vw, 22px);
+      line-height: 1.7;
+      color: var(--text-secondary);
+      max-width: 800px;
+    }
+    .slide .subtitle {
+      font-size: clamp(16px, 2vw, 26px);
+      font-weight: 300;
+      color: var(--text-secondary);
+      margin-top: 12px;
+    }
+    .slide .tag {
+      display: inline-block;
+      padding: 6px 16px;
+      border-radius: 20px;
+      font-size: 13px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 20px;
+    }
+    .tag-accent {
+      background: var(--accent-glow);
+      color: var(--accent);
+      border: 1px solid var(--accent);
+    }
+    .tag-success {
+      background: rgba(74, 222, 128, 0.15);
+      color: var(--success);
+      border: 1px solid var(--success);
+    }
+    .tag-warning {
+      background: rgba(251, 191, 36, 0.15);
+      color: var(--warning);
+      border: 1px solid var(--warning);
+    }
+
+    .slide ul {
+      list-style: none;
+      text-align: left;
+      width: 100%;
+      max-width: 700px;
+    }
+    .slide ul li {
+      padding: 12px 0;
+      padding-left: 32px;
+      position: relative;
+      border-bottom: 1px solid var(--border);
+    }
+    .slide ul li:last-child { border-bottom: none; }
+    .slide ul li::before {
+      content: '▸';
+      position: absolute;
+      left: 0;
+      color: var(--accent);
+      font-size: 18px;
+      font-weight: 700;
+    }
+
+    .slide .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      width: 100%;
+      max-width: 900px;
+      margin-top: 16px;
+    }
+    .slide .stat-card {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 28px;
+      text-align: center;
+      transition: all var(--transition);
+    }
+    .slide .stat-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+      box-shadow: 0 8px 30px var(--accent-glow);
+    }
+    .slide .stat-number {
+      font-size: clamp(28px, 4vw, 52px);
+      font-weight: 800;
+      background: var(--gradient-1);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .slide .stat-label {
+      font-size: 14px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .slide .code-block {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 24px 32px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: clamp(12px, 1.3vw, 18px);
+      line-height: 1.8;
+      color: #c9d1d9;
+      width: 100%;
+      max-width: 700px;
+      text-align: left;
+      margin-top: 16px;
+    }
+    .code-block .keyword { color: #ff79c6; }
+    .code-block .string { color: #f1fa8c; }
+    .code-block .func { color: #8be9fd; }
+    .code-block .comment { color: #6272a4; font-style: italic; }
+    .code-block .number { color: #bd93f9; }
+
+    .slide .timeline {
+      width: 100%;
+      max-width: 800px;
+      position: relative;
+      padding-left: 30px;
+    }
+    .timeline::before {
+      content: '';
+      position: absolute;
+      left: 6px;
+      top: 0; bottom: 0;
+      width: 2px;
+      background: var(--gradient-1);
+      border-radius: 2px;
+    }
+    .timeline-item {
+      position: relative;
+      padding: 16px 0 16px 24px;
+    }
+    .timeline-item::before {
+      content: '';
+      position: absolute;
+      left: -27px; top: 22px;
+      width: 12px; height: 12px;
+      background: var(--accent);
+      border-radius: 50%;
+      box-shadow: 0 0 12px var(--accent-glow);
+    }
+    .timeline-year {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 1px;
+    }
+    .timeline-text {
+      font-size: clamp(14px, 1.4vw, 18px);
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    /* Decorative elements */
+    .slide .bg-glow {
+      position: absolute;
+      width: 400px; height: 400px;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.15;
+      pointer-events: none;
+    }
+    .glow-1 { background: #6c63ff; top: -100px; right: -100px; }
+    .glow-2 { background: #ec4899; bottom: -100px; left: -100px; }
+    .glow-3 { background: #06b6d4; top: 50%; left: -50px; }
+
+    /* ========== PRESENTER VIEW ========== */
+    #presenter-view {
+      position: fixed;
+      top: 59px; left: 0; right: 0; bottom: 0;
+      display: none;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 12px;
+      padding: 12px;
+      background: var(--bg-primary);
+    }
+    #presenter-view.active { display: grid; }
+
+    .pv-panel {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    .pv-panel-header {
+      padding: 10px 16px;
+      background: var(--bg-tertiary);
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .pv-panel-header .dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent-glow);
+    }
+
+    #pv-current-slide {
+      grid-row: 1 / 2;
+      grid-column: 1 / 2;
+    }
+    #pv-next-slide {
+      grid-row: 1 / 2;
+      grid-column: 2 / 2;
+    }
+    #pv-notes {
+      grid-row: 2 / 3;
+      grid-column: 1 / 3;
+    }
+
+    .pv-slide-frame {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+      position: relative;
+    }
+    .pv-slide-frame .slide-container {
+      width: 100%;
+      height: 100%;
+      max-width: unset;
+      max-height: unset;
+      aspect-ratio: 16/9;
+    }
+    .pv-slide-frame .slide {
+      padding: 30px 40px;
+    }
+    .pv-slide-frame .slide h1 { font-size: clamp(16px, 2.5vw, 32px); }
+    .pv-slide-frame .slide h2 { font-size: clamp(14px, 2vw, 24px); }
+    .pv-slide-frame .slide h3 { font-size: clamp(10px, 1.2vw, 16px); }
+    .pv-slide-frame .slide p,
+    .pv-slide-frame .slide li { font-size: clamp(9px, 1vw, 14px); }
+    .pv-slide-frame .slide .stat-number { font-size: clamp(16px, 2vw, 28px); }
+    .pv-slide-frame .slide .stat-label { font-size: 9px; }
+    .pv-slide-frame .slide .stat-card { padding: 14px; }
+    .pv-slide-frame .slide .tag { font-size: 9px; padding: 3px 10px; }
+    .pv-slide-frame .slide .code-block { font-size: clamp(8px, 0.8vw, 12px); padding: 12px 16px; }
+    .pv-slide-frame .slide .timeline-year { font-size: 10px; }
+    .pv-slide-frame .slide .timeline-text { font-size: clamp(9px, 0.9vw, 12px); }
+    .pv-slide-frame .slide ul li { padding-left: 20px; padding-top: 6px; padding-bottom: 6px; }
+
+    .pv-next-overlay {
+      position: absolute;
+      bottom: 20px;
+      right: 20px;
+      background: rgba(0,0,0,0.6);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      padding: 8px 14px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+
+    #pv-notes-content {
+      flex: 1;
+      padding: 20px 24px;
+      overflow-y: auto;
+      font-size: 18px;
+      line-height: 1.8;
+      color: var(--text-secondary);
+    }
+    #pv-notes-content::-webkit-scrollbar { width: 6px; }
+    #pv-notes-content::-webkit-scrollbar-track { background: transparent; }
+    #pv-notes-content::-webkit-scrollbar-thumb {
+      background: var(--surface);
+      border-radius: 3px;
+    }
+
+    /* ========== TIMER & INFO BAR ========== */
+    .pv-info-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 16px;
+      border-top: 1px solid var(--border);
+      background: var(--bg-tertiary);
+    }
+
+    #pv-timer {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 22px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: 2px;
+    }
+    .timer-controls {
+      display: flex;
+      gap: 6px;
+    }
+    .timer-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 4px 10px;
+      border-radius: 6px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all var(--transition);
+    }
+    .timer-btn:hover {
+      background: var(--accent);
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    /* ========== KEYBOARD HINTS ========== */
+    #keyboard-hints {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 16px;
+      padding: 10px 20px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      z-index: 500;
+      transition: all var(--transition);
+      opacity: 0.6;
+    }
+    #keyboard-hints:hover { opacity: 1; }
+    .fullscreen #keyboard-hints,
+    #presentation-view.active ~ #keyboard-hints { display: none; }
+
+    .kb-hint {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      color: var(--text-muted);
+    }
+    .kb-key {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 24px;
+      height: 24px;
+      padding: 0 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+
+    /* ========== SLIDE THUMBNAILS (sidebar) ========== */
+    #thumbnail-sidebar {
+      position: fixed;
+      top: 59px; left: 0; bottom: 0;
+      width: 200px;
+      background: var(--bg-secondary);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 12px;
+      transform: translateX(-100%);
+      transition: transform var(--transition);
+      z-index: 800;
+    }
+    #thumbnail-sidebar.open { transform: translateX(0); }
+    #thumbnail-sidebar::-webkit-scrollbar { width: 4px; }
+    #thumbnail-sidebar::-webkit-scrollbar-thumb { background: var(--surface); border-radius: 2px; }
+
+    .thumb-item {
+      width: 100%;
+      aspect-ratio: 16/9;
+      margin-bottom: 8px;
+      border-radius: 8px;
+      border: 2px solid transparent;
+      overflow: hidden;
+      cursor: pointer;
+      position: relative;
+      transition: all var(--transition);
+      background: var(--bg-tertiary);
+    }
+    .thumb-item:hover { border-color: var(--border); }
+    .thumb-item.active { border-color: var(--accent); box-shadow: 0 0 12px var(--accent-glow); }
+    .thumb-item .thumb-number {
+      position: absolute;
+      top: 4px; left: 6px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-muted);
+      background: rgba(0,0,0,0.5);
+      padding: 1px 5px;
+      border-radius: 4px;
+    }
+    .thumb-item .thumb-title {
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      padding: 4px 6px;
+      font-size: 8px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      background: linear-gradient(transparent, rgba(0,0,0,0.8));
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Toast */
+    .toast {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      padding: 10px 24px;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 30px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 9999;
+      pointer-events: none;
+    }
+    .toast.show {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+
+    /* ========== RESPONSIVE ========== */
+    @media (max-width: 768px) {
+      .slide { padding: 30px 40px; }
+      .slide .grid-2 { grid-template-columns: 1fr; }
+      #presenter-view {
+        grid-template-columns: 1fr;
+        grid-template-rows: auto auto 1fr;
+      }
+      #pv-current-slide { grid-column: 1; grid-row: 1; }
+      #pv-next-slide { grid-column: 1; grid-row: 2; }
+      #pv-notes { grid-column: 1; grid-row: 3; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- TOOLBAR -->
+  <div id="toolbar">
+    <div class="toolbar-brand">
+      <div class="logo">▶</div>
+      <span>Presentr</span>
+    </div>
+    <div class="toolbar-center">
+      <button class="btn" id="btn-prev" title="Previous slide">
+        <span class="icon">◀</span>
+      </button>
+      <div class="slide-counter">
+        <span class="current" id="slide-num">1</span>
+        <span>/ <span id="slide-total">1</span></span>
+      </div>
+      <button class="btn" id="btn-next" title="Next slide">
+        <span class="icon">▶</span>
+      </button>
+    </div>
+    <div class="toolbar-actions">
+      <button class="btn" id="btn-thumbnails" title="Toggle slide overview">
+        <span class="icon">☰</span> Slides
+      </button>
+      <button class="btn" id="btn-presenter" title="Toggle presenter view with notes">
+        <span class="icon">📋</span> Presenter
+      </button>
+      <button class="btn primary" id="btn-fullscreen" title="Enter fullscreen">
+        <span class="icon">⛶</span> Present
+      </button>
+    </div>
+  </div>
+
+  <!-- PROGRESS BAR -->
+  <div id="progress-bar">
+    <div id="progress-fill" style="width: 0%"></div>
+  </div>
+
+  <!-- PRESENTATION VIEW -->
+  <div id="presentation-view"></div>
+
+  <!-- PRESENTER VIEW -->
+  <div id="presenter-view">
+    <div class="pv-panel" id="pv-current-slide">
+      <div class="pv-panel-header"><span class="dot"></span> Current Slide</div>
+      <div class="pv-slide-frame" id="pv-current-frame"></div>
+    </div>
+    <div class="pv-panel" id="pv-next-slide">
+      <div class="pv-panel-header"><span class="dot" style="background:var(--warning)"></span> Next Slide</div>
+      <div class="pv-slide-frame" id="pv-next-frame">
+        <div class="pv-next-overlay" id="pv-next-label">Up next</div>
+      </div>
+    </div>
+    <div class="pv-panel" id="pv-notes">
+      <div class="pv-panel-header"><span class="dot" style="background:var(--success)"></span> Speaker Notes</div>
+      <div id="pv-notes-content">No notes for this slide.</div>
+      <div class="pv-info-bar">
+        <div id="pv-timer">00:00:00</div>
+        <div class="timer-controls">
+          <button class="timer-btn" id="timer-toggle">Start</button>
+          <button class="timer-btn" id="timer-reset">Reset</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- THUMBNAIL SIDEBAR -->
+  <div id="thumbnail-sidebar"></div>
+
+  <!-- KEYBOARD HINTS -->
+  <div id="keyboard-hints">
+    <div class="kb-hint"><span class="kb-key">←</span><span class="kb-key">→</span> Navigate</div>
+    <div class="kb-hint"><span class="kb-key">P</span> Presenter</div>
+    <div class="kb-hint"><span class="kb-key">F</span> Fullscreen</div>
+    <div class="kb-hint"><span class="kb-key">Esc</span> Exit</div>
+  </div>
+
+  <!-- TOAST -->
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ===================================================================
+    // SLIDE DATA — Edit this array to create your own presentation!
+    // Each slide has: theme, html content, and optional notes.
+    // ===================================================================
+    const slides = [
+      {
+        theme: 'hero',
+        html: `
+          <div class="bg-glow glow-1"></div>
+          <div class="bg-glow glow-2"></div>
+          <span class="tag tag-accent">Keynote 2026</span>
+          <h1>The Future of Artificial Intelligence</h1>
+          <p class="subtitle">How AI is reshaping industries, creativity, and the way we live</p>
+        `,
+        notes: `Welcome everyone to this keynote presentation on the Future of AI. Start by setting the stage — AI is no longer a futuristic concept, it's embedded in our daily lives. This talk will cover current breakthroughs, industry impact, ethical considerations, and what's coming next. Remember to pace yourself and engage the audience early.`
+      },
+      {
+        theme: 'gradient1',
+        html: `
+          <div class="bg-glow glow-3"></div>
+          <span class="tag tag-success">Overview</span>
+          <h2>What We'll Cover Today</h2>
+          <ul>
+            <li>The current state of AI in 2026</li>
+            <li>Key breakthroughs driving the revolution</li>
+            <li>Industry transformation & real-world impact</li>
+            <li>Ethical considerations & responsible AI</li>
+            <li>What's next — predictions for 2027 and beyond</li>
+          </ul>
+        `,
+        notes: `Give a quick roadmap of the presentation. This sets expectations and helps the audience follow along. Mention that you'll keep each section concise with time for Q&A at the end. Emphasize that this isn't just about technology — it's about people and how AI affects their lives.`
+      },
+      {
+        theme: 'dark',
+        html: `
+          <span class="tag tag-warning">By the Numbers</span>
+          <h2>AI in 2026 — The Scale</h2>
+          <div class="grid-2">
+            <div class="stat-card">
+              <div class="stat-number">$420B</div>
+              <div class="stat-label">Global AI Market Size</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number">72%</div>
+              <div class="stat-label">Enterprises Using AI</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number">3.2M</div>
+              <div class="stat-label">AI Research Papers / Year</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number">140+</div>
+              <div class="stat-label">Countries with AI Strategies</div>
+            </div>
+          </div>
+        `,
+        notes: `These numbers demonstrate the sheer scale of AI adoption. The $420B market figure comes from recent Gartner reports. Emphasize that 72% enterprise adoption is up from just 35% in 2020 — that's a doubling in 6 years. The research paper volume shows how much intellectual capital is being invested. Pause on each stat to let it sink in.`
+      },
+      {
+        theme: 'gradient2',
+        html: `
+          <div class="bg-glow glow-1"></div>
+          <span class="tag tag-accent">Breakthroughs</span>
+          <h2>Key Milestones in AI</h2>
+          <div class="timeline">
+            <div class="timeline-item">
+              <div class="timeline-year">2023</div>
+              <div class="timeline-text">Large Language Models go mainstream — GPT-4 and beyond</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-year">2024</div>
+              <div class="timeline-text">Multimodal AI: text, image, video, and audio unified</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-year">2025</div>
+              <div class="timeline-text">Autonomous AI agents begin handling complex workflows</div>
+            </div>
+            <div class="timeline-item">
+              <div class="timeline-year">2026</div>
+              <div class="timeline-text">AI-native software development becomes the standard</div>
+            </div>
+          </div>
+        `,
+        notes: `Walk through each milestone chronologically. For 2023, mention how ChatGPT changed public perception overnight. For 2024, explain multimodal means AI can see, hear, and read simultaneously. For 2025, highlight how agents moved from demos to production. For 2026, talk about how most new software is now built with AI assistance — it's the new normal.`
+      },
+      {
+        theme: 'gradient3',
+        html: `
+          <span class="tag tag-success">Code</span>
+          <h2>AI-Powered Development</h2>
+          <p>Modern software is built with AI as a pair programmer:</p>
+          <div class="code-block">
+            <span class="comment">// An AI agent writes production-ready code</span><br>
+            <span class="keyword">async function</span> <span class="func">analyzeData</span>(dataset) {<br>
+            &nbsp;&nbsp;<span class="keyword">const</span> insights = <span class="keyword">await</span> <span class="func">ai.analyze</span>({<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;data: dataset,<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;model: <span class="string">"deepmind-v5"</span>,<br>
+            &nbsp;&nbsp;&nbsp;&nbsp;depth: <span class="string">"comprehensive"</span><br>
+            &nbsp;&nbsp;});<br>
+            &nbsp;&nbsp;<span class="keyword">return</span> insights.<span class="func">summarize</span>();<br>
+            }
+          </div>
+        `,
+        notes: `This is a great visual to show how AI integration looks in practice. Don't read the code line by line — instead, highlight the concept: developers now describe what they want at a high level, and AI handles the implementation details. Mention that this isn't replacing developers, it's amplifying them. Studies show 40% productivity gains.`
+      },
+      {
+        theme: 'gradient1',
+        html: `
+          <div class="bg-glow glow-2"></div>
+          <span class="tag tag-warning">Impact</span>
+          <h2>Industries Being Transformed</h2>
+          <div class="grid-2">
+            <div class="stat-card">
+              <div class="stat-number">🏥</div>
+              <div class="stat-label">Healthcare — AI diagnostics outperform specialists in 14 areas</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number">🎓</div>
+              <div class="stat-label">Education — Personalized learning paths for every student</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number">🏦</div>
+              <div class="stat-label">Finance — Real-time fraud detection saves $12B annually</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-number">🎨</div>
+              <div class="stat-label">Creative — AI co-creation tools used by 60% of designers</div>
+            </div>
+          </div>
+        `,
+        notes: `For each industry, give one vivid example. Healthcare: mention how AI detected early-stage cancers that radiologists missed. Education: describe how a struggling student in rural India now gets the same quality tutoring as someone at a top prep school. Finance: $12B is a concrete, memorable figure. Creative: mention that AI doesn't replace artists, it gives them superpowers. Ask the audience which industry excites them most.`
+      },
+      {
+        theme: 'accent',
+        html: `
+          <div class="bg-glow glow-1"></div>
+          <div class="bg-glow glow-2"></div>
+          <span class="tag tag-accent">Ethics</span>
+          <h2>Building AI Responsibly</h2>
+          <ul>
+            <li><strong>Transparency</strong> — Users should know when they're interacting with AI</li>
+            <li><strong>Fairness</strong> — Actively audit and reduce bias in training data and outputs</li>
+            <li><strong>Privacy</strong> — Data protection and user consent are non-negotiable</li>
+            <li><strong>Accountability</strong> — Clear ownership of AI decisions and their consequences</li>
+            <li><strong>Sustainability</strong> — Reduce the environmental footprint of AI training</li>
+          </ul>
+        `,
+        notes: `This is the most important slide. Slow down here. Emphasize that speed of innovation must not outpace ethical considerations. For transparency, mention examples of deepfakes. For fairness, cite studies showing hiring algorithms that discriminated. Privacy — reference GDPR and new AI-specific regulations. Accountability — who's responsible when an autonomous car makes a mistake? Sustainability — training GPT-4 used as much energy as 1,000 US homes for a year.`
+      },
+      {
+        theme: 'end',
+        html: `
+          <div class="bg-glow glow-1"></div>
+          <div class="bg-glow glow-2"></div>
+          <span class="tag tag-accent">Thank You</span>
+          <h1>The Future is Ours to Shape</h1>
+          <p class="subtitle">Let's build AI that amplifies human potential.</p>
+          <h3 style="margin-top: 32px; color: var(--text-muted);">Q&A — Let's discuss</h3>
+        `,
+        notes: `End with energy and optimism. Reiterate the core message: AI is a tool, and its impact depends on the choices we make. Open the floor for questions. If the audience is quiet, have 2-3 prepared questions to spark discussion: "What AI application surprised you most?" or "What concerns you most about AI's future?" Thank the audience for their time.`
+      }
+    ];
+
+    // ===================================================================
+    // PRESENTATION ENGINE
+    // ===================================================================
+    let currentSlide = 0;
+    let presenterMode = false;
+    let timerRunning = false;
+    let timerSeconds = 0;
+    let timerInterval = null;
+    let sidebarOpen = false;
+
+    const presentationView = document.getElementById('presentation-view');
+    const presenterView = document.getElementById('presenter-view');
+    const toolbar = document.getElementById('toolbar');
+    const progressBar = document.getElementById('progress-bar');
+    const progressFill = document.getElementById('progress-fill');
+    const slideNum = document.getElementById('slide-num');
+    const slideTotal = document.getElementById('slide-total');
+    const pvCurrentFrame = document.getElementById('pv-current-frame');
+    const pvNextFrame = document.getElementById('pv-next-frame');
+    const pvNotesContent = document.getElementById('pv-notes-content');
+    const pvTimer = document.getElementById('pv-timer');
+    const pvNextLabel = document.getElementById('pv-next-label');
+    const thumbnailSidebar = document.getElementById('thumbnail-sidebar');
+    const toastEl = document.getElementById('toast');
+
+    // Initialize
+    function init() {
+      slideTotal.textContent = slides.length;
+      buildSlides(presentationView, 'main');
+      buildThumbnails();
+      goToSlide(0);
+    }
+
+    function buildSlides(container, prefix) {
+      // If main view, clear and create slide container
+      if (prefix === 'main') {
+        container.innerHTML = '';
+        const sc = document.createElement('div');
+        sc.className = 'slide-container';
+        slides.forEach((s, i) => {
+          const div = document.createElement('div');
+          div.className = `slide slide-theme-${s.theme}`;
+          div.id = `${prefix}-slide-${i}`;
+          div.innerHTML = s.html;
+          sc.appendChild(div);
+        });
+        container.appendChild(sc);
+      }
+    }
+
+    function buildPresenterSlides(frame, slideIndex) {
+      frame.innerHTML = '';
+      const sc = document.createElement('div');
+      sc.className = 'slide-container';
+      if (slideIndex >= 0 && slideIndex < slides.length) {
+        const div = document.createElement('div');
+        div.className = `slide slide-theme-${slides[slideIndex].theme} active`;
+        div.innerHTML = slides[slideIndex].html;
+        sc.appendChild(div);
+      } else {
+        const div = document.createElement('div');
+        div.className = 'slide slide-theme-dark active';
+        div.innerHTML = '<h3 style="color: var(--text-muted);">End of presentation</h3>';
+        sc.appendChild(div);
+      }
+      frame.appendChild(sc);
+      // Re-add next label if it's the next frame
+      if (frame === pvNextFrame) {
+        frame.appendChild(pvNextLabel);
+      }
+    }
+
+    function buildThumbnails() {
+      thumbnailSidebar.innerHTML = '';
+      slides.forEach((s, i) => {
+        const thumb = document.createElement('div');
+        thumb.className = 'thumb-item';
+        thumb.innerHTML = `
+          <span class="thumb-number">${i + 1}</span>
+          <span class="thumb-title">${getSlideTitle(s)}</span>
+        `;
+        thumb.style.background = getThemeBg(s.theme);
+        thumb.addEventListener('click', () => goToSlide(i));
+        thumbnailSidebar.appendChild(thumb);
+      });
+    }
+
+    function getSlideTitle(slide) {
+      const tmp = document.createElement('div');
+      tmp.innerHTML = slide.html;
+      const h = tmp.querySelector('h1, h2, h3');
+      return h ? h.textContent : 'Untitled';
+    }
+
+    function getThemeBg(theme) {
+      const themes = {
+        hero: 'linear-gradient(135deg, #0f0c29, #302b63)',
+        gradient1: 'linear-gradient(135deg, #1a1a2e, #0f3460)',
+        gradient2: 'linear-gradient(135deg, #0f0f1a, #2d1b69)',
+        gradient3: 'linear-gradient(135deg, #0a192f, #1d3557)',
+        dark: 'linear-gradient(180deg, #111118, #1a1a28)',
+        accent: 'linear-gradient(135deg, #312e81, #581c87)',
+        end: 'linear-gradient(135deg, #0c0c1d, #312e81)',
+      };
+      return themes[theme] || themes.dark;
+    }
+
+    function goToSlide(index) {
+      if (index < 0 || index >= slides.length) return;
+
+      const direction = index > currentSlide ? 1 : -1;
+
+      // Main view slides
+      const allSlides = presentationView.querySelectorAll('.slide');
+      allSlides.forEach((s, i) => {
+        s.classList.remove('active', 'exit-left');
+        if (i === currentSlide && i !== index) {
+          if (direction > 0) s.classList.add('exit-left');
+        }
+      });
+
+      currentSlide = index;
+      const activeSlide = document.getElementById(`main-slide-${index}`);
+      if (activeSlide) {
+        // Small delay for transition
+        requestAnimationFrame(() => activeSlide.classList.add('active'));
+      }
+
+      // Update UI
+      slideNum.textContent = index + 1;
+      progressFill.style.width = `${((index + 1) / slides.length) * 100}%`;
+
+      // Thumbnails
+      document.querySelectorAll('.thumb-item').forEach((t, i) => {
+        t.classList.toggle('active', i === index);
+      });
+
+      // Presenter view
+      if (presenterMode) {
+        updatePresenterView();
+      }
+    }
+
+    function updatePresenterView() {
+      buildPresenterSlides(pvCurrentFrame, currentSlide);
+      buildPresenterSlides(pvNextFrame, currentSlide + 1);
+      pvNextLabel.textContent = currentSlide + 1 < slides.length
+        ? `Up next: Slide ${currentSlide + 2}`
+        : 'End of presentation';
+
+      const notes = slides[currentSlide].notes;
+      pvNotesContent.textContent = notes || 'No notes for this slide.';
+    }
+
+    function nextSlide() { goToSlide(currentSlide + 1); }
+    function prevSlide() { goToSlide(currentSlide - 1); }
+
+    function togglePresenter() {
+      presenterMode = !presenterMode;
+      presenterView.classList.toggle('active', presenterMode);
+      presentationView.style.display = presenterMode ? 'none' : '';
+      if (presenterMode) updatePresenterView();
+      toast(presenterMode ? 'Presenter view enabled' : 'Presenter view disabled');
+    }
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+        presentationView.classList.add('fullscreen');
+        toolbar.classList.add('hidden');
+        progressBar.classList.add('hidden');
+        toast('Press Esc to exit fullscreen');
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    document.addEventListener('fullscreenchange', () => {
+      if (!document.fullscreenElement) {
+        presentationView.classList.remove('fullscreen');
+        toolbar.classList.remove('hidden');
+        progressBar.classList.remove('hidden');
+      }
+    });
+
+    function toggleSidebar() {
+      sidebarOpen = !sidebarOpen;
+      thumbnailSidebar.classList.toggle('open', sidebarOpen);
+    }
+
+    // Timer
+    function toggleTimer() {
+      timerRunning = !timerRunning;
+      document.getElementById('timer-toggle').textContent = timerRunning ? 'Pause' : 'Start';
+      if (timerRunning) {
+        timerInterval = setInterval(() => {
+          timerSeconds++;
+          updateTimerDisplay();
+        }, 1000);
+      } else {
+        clearInterval(timerInterval);
+      }
+    }
+
+    function resetTimer() {
+      timerRunning = false;
+      clearInterval(timerInterval);
+      timerSeconds = 0;
+      updateTimerDisplay();
+      document.getElementById('timer-toggle').textContent = 'Start';
+    }
+
+    function updateTimerDisplay() {
+      const h = String(Math.floor(timerSeconds / 3600)).padStart(2, '0');
+      const m = String(Math.floor((timerSeconds % 3600) / 60)).padStart(2, '0');
+      const s = String(timerSeconds % 60).padStart(2, '0');
+      pvTimer.textContent = `${h}:${m}:${s}`;
+    }
+
+    // Toast
+    function toast(msg) {
+      toastEl.textContent = msg;
+      toastEl.classList.add('show');
+      setTimeout(() => toastEl.classList.remove('show'), 2000);
+    }
+
+    // Event Listeners
+    document.getElementById('btn-next').addEventListener('click', nextSlide);
+    document.getElementById('btn-prev').addEventListener('click', prevSlide);
+    document.getElementById('btn-presenter').addEventListener('click', togglePresenter);
+    document.getElementById('btn-fullscreen').addEventListener('click', toggleFullscreen);
+    document.getElementById('btn-thumbnails').addEventListener('click', toggleSidebar);
+    document.getElementById('timer-toggle').addEventListener('click', toggleTimer);
+    document.getElementById('timer-reset').addEventListener('click', resetTimer);
+
+    // Keyboard Navigation
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') {
+        e.preventDefault();
+        nextSlide();
+      } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+        e.preventDefault();
+        prevSlide();
+      } else if (e.key === 'f' || e.key === 'F') {
+        toggleFullscreen();
+      } else if (e.key === 'p' || e.key === 'P') {
+        togglePresenter();
+      } else if (e.key === 'Escape') {
+        if (sidebarOpen) toggleSidebar();
+      } else if (e.key === 'Home') {
+        goToSlide(0);
+      } else if (e.key === 'End') {
+        goToSlide(slides.length - 1);
+      }
+    });
+
+    // Click navigation on main slide (click left/right halves)
+    presentationView.addEventListener('click', (e) => {
+      const rect = presentationView.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      if (x > rect.width / 2) nextSlide();
+      else prevSlide();
+    });
+
+    // Touch support
+    let touchStartX = 0;
+    document.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+    });
+    document.addEventListener('touchend', (e) => {
+      const diff = touchStartX - e.changedTouches[0].screenX;
+      if (Math.abs(diff) > 50) {
+        if (diff > 0) nextSlide();
+        else prevSlide();
+      }
+    });
+
+    // Initialize on load
+    init();
+  </script>
+</body>
+</html>
