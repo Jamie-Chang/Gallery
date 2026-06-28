@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Magical Card & NFC Scanner</title>
+    <meta name="description"
+        content="A premium web app bridging physical cards and auditory feedback using Web NFC and Audio APIs.">
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body>
+
+    <header>
+        <h1>Magical Card Beeper</h1>
+    </header>
+
+    <div class="container">
+
+        <!-- Unified Scanner & Mapper Section -->
+        <section class="card">
+            <h2>✨ Card Scanner & Mapper</h2>
+            
+            <!-- NFC Section -->
+            <p style="text-align: center; color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+                Requires Chrome on Android and HTTPS
+            </p>
+            <button id="nfcScanBtn">📡 Start NFC Scan</button>
+            <div id="nfcStatus" class="message"></div>
+
+            <hr style="border: 1px solid rgba(255,255,255,0.1); margin: 1.5rem 0;">
+
+            <div class="form-group">
+                <label for="cardIdInput">Card ID</label>
+                <input type="text" id="cardIdInput" placeholder="Scan tag or type ID...">
+            </div>
+
+            <div class="form-group">
+                <label for="soundSelect">Assigned Sound Effect</label>
+                <select id="soundSelect">
+                    <option value="">🚫 Unassigned</option>
+                    <optgroup label="Cartoon Sounds">
+                        <option value="https://actions.google.com/sounds/v1/cartoon/cartoon_boing.ogg">🐸 Silly Boing</option>
+                        <option value="https://actions.google.com/sounds/v1/cartoon/magic_chime.ogg">🪄 Magic Chime</option>
+                        <option value="https://actions.google.com/sounds/v1/cartoon/rubber_duck_squeak_series.ogg">🦆 Duck Quack</option>
+                        <option value="https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg">🎺 Clang & Wobble</option>
+                        <option value="https://actions.google.com/sounds/v1/cartoon/cartoon_cowbell.ogg">🔔 Cowbell</option>
+                        <option value="https://actions.google.com/sounds/v1/cartoon/clown_horn.ogg">🤡 Clown Horn</option>
+                        <option value="https://actions.google.com/sounds/v1/cartoon/concussive_guitar_hit.ogg">🎸 Guitar Hit</option>
+                    </optgroup>
+                    <optgroup label="Animal Sounds">
+                        <option value="https://actions.google.com/sounds/v1/animals/animal_bark_and_growl.ogg">🐕 Dog Bark & Growl</option>
+                        <option value="https://actions.google.com/sounds/v1/animals/cat_purr.ogg">🐈 Cat Purr</option>
+                        <option value="https://actions.google.com/sounds/v1/animals/bee_buzz.ogg">🐝 Bee Buzz</option>
+                        <option value="https://actions.google.com/sounds/v1/animals/crows_picking_and_eating.ogg">🐦 Crows</option>
+                    </optgroup>
+                </select>
+            </div>
+
+            <button id="saveMappingBtn">Save Mapping ✨</button>
+            <div id="saveMessage" class="message"></div>
+
+            <hr style="border: 1px solid rgba(255,255,255,0.1); margin: 1.5rem 0;">
+
+            <button id="testScanBtn">Test Play Assigned Sound 🎵</button>
+            <div id="scanMessage" class="message"></div>
+        </section>
+
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

@@ -411,7 +411,7 @@ ul {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
   gap: var(--space-md);
-  max-width: 600px;
+  max-width: 1100px;
   margin: 0 auto;
 }
 
