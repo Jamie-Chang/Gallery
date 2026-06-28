@@ -28,7 +28,7 @@ const revealObserver = new IntersectionObserver((entries) => {
   });
 }, observerOptions);
 
-document.querySelectorAll('.about-card').forEach((card) => {
+document.querySelectorAll('.about-card, .tool-card').forEach((card) => {
   revealObserver.observe(card);
 });
 
